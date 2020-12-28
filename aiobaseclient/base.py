@@ -8,6 +8,7 @@ import orjson
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp_socks import ProxyConnector
 from aiokit import AioThing
+from izihawa_utils.common import filter_none
 from multidict import CIMultiDict
 from python_socks import parse_proxy_url
 from tenacity import (
@@ -17,7 +18,6 @@ from tenacity import (
     stop_after_attempt,
     wait_fixed,
 )
-from izihawa_utils.common import noneless
 
 from .exceptions import (
     ClientError,
@@ -50,7 +50,7 @@ class BaseClient(AioThing):
         self.ttl_dns_cache = ttl_dns_cache
         self.proxy_url = proxy_url
         self.session = None
-        self.default_params = CIMultiDict(noneless(default_params or {}))
+        self.default_params = CIMultiDict(filter_none(default_params or {}))
         self.default_headers = default_headers or {}
         self.timeout = timeout
         self.max_retries = max_retries
@@ -58,7 +58,7 @@ class BaseClient(AioThing):
 
         self.request = retry(
             retry=retry_if_exception_type(self.temporary_errors),
-            stop=stop_after_attempt(max_retries),
+            stop=stop_after_attempt(max_retries) if max_retries is not None else None,
             wait=wait_fixed(retry_delay),
             before_sleep=before_sleep_log(logging.getLogger('aiobaseclient'), logging.WARNING),
             reraise=True,
@@ -108,9 +108,9 @@ class BaseClient(AioThing):
         if response_processor is None:
             response_processor = self.response_processor
         all_params = CIMultiDict(self.default_params)
-        all_headers = dict(self.default_headers)
         if params:
-            all_params.update(noneless(params))
+            all_params.update(filter_none(params))
+        all_headers = dict(self.default_headers)
         if headers:
             all_headers.update(headers)
         all_headers.update(self.headers(**kwargs))
@@ -128,7 +128,7 @@ class BaseClient(AioThing):
                 method,
                 f"{self.base_url}/{url.lstrip('/')}",
                 params=params,
-                headers=noneless(all_headers),
+                headers=filter_none(all_headers),
                 data=data,
                 timeout=timeout or self.timeout,
             )
@@ -165,6 +165,7 @@ class BaseClient(AioThing):
 
     async def start(self, *args, **kwargs):
         self.session = self._create_session()
+        return self
 
     async def stop(self):
         await self.session.close()
@@ -176,7 +177,7 @@ class BaseClient(AioThing):
         return text
 
     async def __aenter__(self):
-        return self
+        return await self.start()
 
     async def __aexit__(self, exc_type, exc, tb):
         await self.stop()
