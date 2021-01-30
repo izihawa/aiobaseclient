@@ -164,11 +164,13 @@ class BaseClient(AioThing):
         return await self.request('put', url, *args, **kwargs)
 
     async def start(self, *args, **kwargs):
-        self.session = self._create_session()
-        return self
+        if not self.session:
+            self.session = self._create_session()
 
     async def stop(self):
-        await self.session.close()
+        if self.session:
+            await self.session.close()
+            self.session = None
 
     async def response_processor(self, response):
         text = await response.text()
@@ -177,7 +179,8 @@ class BaseClient(AioThing):
         return text
 
     async def __aenter__(self):
-        return await self.start()
+        await self.start_and_wait()
+        return self
 
     async def __aexit__(self, exc_type, exc, tb):
         await self.stop()
