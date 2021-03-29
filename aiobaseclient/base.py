@@ -114,6 +114,7 @@ class BaseClient(AioThing):
         if headers:
             all_headers.update(headers)
         all_headers.update(self.headers(**kwargs))
+        full_url = f"{self.base_url}/{url.lstrip('/')}"
 
         try:
             await self.pre_request_hook()
@@ -126,7 +127,7 @@ class BaseClient(AioThing):
 
             response = await self.session.request(
                 method,
-                f"{self.base_url}/{url.lstrip('/')}",
+                full_url,
                 params=params,
                 headers=filter_none(all_headers),
                 data=data,
@@ -137,9 +138,9 @@ class BaseClient(AioThing):
             return response
         except ClientConnectorError as e:
             if isinstance(e.os_error, socket.gaierror) and e.errno == -2:
-                raise TemporaryError(url=url, nested_error=str(e))
+                raise TemporaryError(url=full_url, nested_error=str(e))
             elif e.errno == 111:
-                raise TemporaryError(url=url, nested_error=str(e))
+                raise TemporaryError(url=full_url, nested_error=str(e))
             else:
                 raise
         except (
@@ -149,7 +150,7 @@ class BaseClient(AioThing):
         ) as e:
             await self.session.close()
             self.session = self._create_session()
-            raise TemporaryError(url=url, nested_error=str(e))
+            raise TemporaryError(url=full_url, nested_error=str(e))
 
     async def delete(self, url: str = '', *args, **kwargs):
         return await self.request('delete', url, *args, **kwargs)
