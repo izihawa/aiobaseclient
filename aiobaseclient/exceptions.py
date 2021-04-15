@@ -5,8 +5,16 @@ class ClientError(BaseError):
     code = 'client_error'
 
 
-class WrongContentTypeError(ClientError):
-    code = 'wrong_content_type_error'
+class PermanentError(ClientError):
+    code = 'permanent_error'
+
+
+class TemporaryError(ClientError):
+    code = 'temporary_error'
+
+
+class BadRequestError(PermanentError):
+    code = 'bad_request_error'
 
 
 class ExternalServiceError(ClientError):
@@ -20,15 +28,11 @@ class ExternalServiceError(ClientError):
         }
 
 
-class TemporaryError(BaseError):
-    code = 'temporary_error'
-
-
-class NotFoundError(BaseError):
+class NotFoundError(PermanentError):
     code = 'not_found_error'
 
 
-class MethodNotAllowedError(BaseError):
+class MethodNotAllowedError(PermanentError):
     code = 'method_not_allowed_error'
 
 
@@ -38,3 +42,7 @@ class ServiceUnavailableError(TemporaryError):
 
 class TooManyRequestsError(TemporaryError):
     code = 'too_many_requests_error'
+
+
+class WrongContentTypeError(PermanentError):
+    code = 'wrong_content_type_error'

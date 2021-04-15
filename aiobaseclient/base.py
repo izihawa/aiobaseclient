@@ -10,7 +10,11 @@ from aiohttp_socks import ProxyConnector
 from aiokit import AioThing
 from izihawa_utils.common import filter_none
 from multidict import CIMultiDict
-from python_socks import parse_proxy_url
+from python_socks import (
+    ProxyError,
+    ProxyTimeoutError,
+    parse_proxy_url,
+)
 from tenacity import (
     before_sleep_log,
     retry,
@@ -137,9 +141,9 @@ class BaseClient(AioThing):
                 return await response_processor(response)
             return response
         except ClientConnectorError as e:
-            if isinstance(e.os_error, socket.gaierror) and e.errno == -2:
-                raise TemporaryError(url=full_url, nested_error=str(e))
-            elif e.errno == 111:
+            if isinstance(e.os_error, socket.gaierror) and (e.errno == -2 or e.errno == 111):
+                await self.session.close()
+                self.session = self._create_session()
                 raise TemporaryError(url=full_url, nested_error=str(e))
             else:
                 raise
@@ -147,6 +151,9 @@ class BaseClient(AioThing):
             aiohttp.client_exceptions.ClientOSError,
             aiohttp.client_exceptions.ServerDisconnectedError,
             asyncio.TimeoutError,
+            ConnectionAbortedError,
+            ProxyError,
+            ProxyTimeoutError,
         ) as e:
             await self.session.close()
             self.session = self._create_session()
@@ -226,9 +233,9 @@ class BaseStandardClient(BaseClient):
         if response.status == 502 or response.status == 503:
             raise ServiceUnavailableError(status=response.status, data=data)
         elif response.status == 404:
-            raise NotFoundError(status=response.status, data=data, url=response.url)
+            raise NotFoundError(status=response.status, data=data, url=str(response.url))
         elif response.status == 405:
-            raise MethodNotAllowedError(status=response.status, url=response.url)
+            raise MethodNotAllowedError(status=response.status, url=str(response.url))
         else:
             if content_type.startswith('application/json'):
                 try:
