@@ -1,7 +1,10 @@
 import asyncio
 import logging
 import socket
-import typing
+from typing import (
+    Dict,
+    Optional,
+)
 
 import aiohttp
 import orjson
@@ -40,16 +43,19 @@ class BaseClient(AioThing):
     )
 
     def __init__(
-        self, base_url,
-        default_params=None,
-        default_headers=None,
-        timeout=None,
-        ttl_dns_cache=None,
-        max_retries=2,
-        retry_delay=0.5,
-        proxy_url=None,
+        self,
+        base_url: str,
+        default_params: Optional[dict] = None,
+        default_headers: Optional[dict] = None,
+        timeout: Optional[float] = None,
+        ttl_dns_cache: Optional[float] = None,
+        max_retries: Optional[int] = 2,
+        retry_delay: Optional[float] = 0.5,
+        proxy_url: Optional[str] = None,
     ):
         super().__init__()
+        if self.base_url is None:
+            raise RuntimeError(f'`base_url` must be passed for {self.__class__.__name__} constructor')
         self.base_url = base_url.rstrip('/')
         self.ttl_dns_cache = ttl_dns_cache
         self.proxy_url = proxy_url
@@ -99,11 +105,11 @@ class BaseClient(AioThing):
         method: str = 'get',
         url: str = '',
         response_processor=None,
-        params=None,
-        headers=None,
-        json=None,
-        data=None,
-        timeout=None,
+        params: Optional[dict] = None,
+        headers: Optional[dict] = None,
+        json: Optional[dict] = None,
+        data: Optional[dict] = None,
+        timeout: Optional[float] = None,
         *args,
         **kwargs,
     ):
@@ -196,14 +202,15 @@ class BaseClient(AioThing):
 
 class BaseStandardClient(BaseClient):
     def __init__(
-        self, base_url,
-        default_params=None,
-        default_headers=None,
-        timeout=None,
-        ttl_dns_cache=None,
-        max_retries=2,
-        retry_delay=0.5,
-        proxy_url=None,
+        self,
+        base_url: str,
+        default_params: Optional[dict] = None,
+        default_headers: Optional[dict] = None,
+        timeout: Optional[float] = None,
+        ttl_dns_cache: Optional[float] = None,
+        max_retries: Optional[int] = 2,
+        retry_delay: Optional[float] = 0.5,
+        proxy_url: Optional[str] = None,
     ):
         super().__init__(
             base_url=base_url,
@@ -218,7 +225,14 @@ class BaseStandardClient(BaseClient):
         self.user_token = None
         self.service_token = None
 
-    def headers(self, with_user_token=True, with_service_token=True, cache_bypass=True, user_ip=None, **kwargs):
+    def headers(
+        self,
+        with_user_token: bool = True,
+        with_service_token: bool = True,
+        cache_bypass: bool = True,
+        user_ip: Optional[str] = None,
+        **kwargs,
+    ):
         return {
             **super().headers(**kwargs),
             'X-User-Token': self.user_token if with_user_token else None,
@@ -240,7 +254,7 @@ class BaseStandardClient(BaseClient):
             if content_type.startswith('application/json'):
                 try:
                     data = orjson.loads(data)
-                    if isinstance(data, typing.Dict) and data.get('status') == 'error':
+                    if isinstance(data, Dict) and data.get('status') == 'error':
                         raise ClientError(**data)
                     return data
                 except ValueError:
