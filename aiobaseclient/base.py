@@ -54,7 +54,7 @@ class BaseClient(AioThing):
         proxy_url: Optional[str] = None,
     ):
         super().__init__()
-        if self.base_url is None:
+        if base_url is None:
             raise RuntimeError(f'`base_url` must be passed for {self.__class__.__name__} constructor')
         self.base_url = base_url.rstrip('/')
         self.ttl_dns_cache = ttl_dns_cache
