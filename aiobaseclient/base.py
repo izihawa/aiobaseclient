@@ -48,7 +48,8 @@ class BaseClient(AioThing):
         default_params: Optional[dict] = None,
         default_headers: Optional[dict] = None,
         timeout: Optional[float] = None,
-        ttl_dns_cache: Optional[float] = None,
+        use_dns_cache: bool = True,
+        ttl_dns_cache: int = 10,
         max_retries: Optional[int] = 2,
         retry_delay: Optional[float] = 0.5,
         proxy_url: Optional[str] = None,
@@ -57,6 +58,7 @@ class BaseClient(AioThing):
         if base_url is None:
             raise RuntimeError(f'`base_url` must be passed for {self.__class__.__name__} constructor')
         self.base_url = base_url.rstrip('/')
+        self.use_dns_cache = use_dns_cache
         self.ttl_dns_cache = ttl_dns_cache
         self.proxy_url = proxy_url
         self.session = None
@@ -86,14 +88,16 @@ class BaseClient(AioThing):
                 proxy_kwargs['username'],\
                 proxy_kwargs['password'] = parse_proxy_url(self.proxy_url)
             connector = ProxyConnector(
+                use_dns_cache=self.use_dns_cache,
                 ttl_dns_cache=self.ttl_dns_cache,
-                verify_ssl=False,
+                ssl=False,
                 **proxy_kwargs,
             )
         else:
             connector = aiohttp.TCPConnector(
+                use_dns_cache=self.use_dns_cache,
                 ttl_dns_cache=self.ttl_dns_cache,
-                verify_ssl=False,
+                ssl=False,
             )
         return aiohttp.ClientSession(connector=connector)
 
@@ -207,7 +211,8 @@ class BaseStandardClient(BaseClient):
         default_params: Optional[dict] = None,
         default_headers: Optional[dict] = None,
         timeout: Optional[float] = None,
-        ttl_dns_cache: Optional[float] = None,
+        use_dns_cache: bool = True,
+        ttl_dns_cache: int = 10,
         max_retries: Optional[int] = 2,
         retry_delay: Optional[float] = 0.5,
         proxy_url: Optional[str] = None,
@@ -217,6 +222,7 @@ class BaseStandardClient(BaseClient):
             default_params=default_params,
             default_headers=default_headers,
             timeout=timeout,
+            use_dns_cache=use_dns_cache,
             ttl_dns_cache=ttl_dns_cache,
             max_retries=max_retries,
             retry_delay=retry_delay,
